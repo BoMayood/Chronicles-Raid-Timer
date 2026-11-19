@@ -1,0 +1,11 @@
+{
+    "overlay_pos": {
+        "x": 1173,
+        "y": 313
+    },
+    "sound_enabled": true,
+    "alert_minutes": 5,
+    "sound_file": "viking_horn.wav",
+    "volume": 44,
+    "hotkey": "F8"
+}
