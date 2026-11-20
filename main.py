@@ -1,6 +1,6 @@
 """
 ArcheAge Chronicles - Standalone Raid Timer Overlay
-Tracks Crimson Rift and Celtak Raid schedules automatically adjusted to local timezone.
+Tracks Crimson Rift and Brutal Nightmare Raid schedules automatically adjusted to local timezone.
 Includes Audio Alerts, Custom Sound Support, Configurable Hotkey, Volume Slider, and High-Clarity HUD.
 
 Created by NoYz
@@ -200,15 +200,15 @@ class SoundManager:
 # ---------------------------------------------------------
 # 4. RAID SCHEDULE ENGINE (UTC -> LOCAL CONVERSION & REPEAT)
 # ---------------------------------------------------------
-CRIMSON_UTC_HOURS = [0, 12, 19]
-CELTAK_UTC_HOURS = [2, 14, 21]
-RAID_DURATION_SECONDS = 3600
+CRIMSON_UTC_HOURS = [3, 11, 19]
+NIGHTMARE_UTC_HOURS = [4, 12, 20]
+RAID_DURATION_SECONDS = 1800  # 30 minutes each (UTC)
 
 def get_raid_windows(raid_type, ref_timestamp=None):
     if ref_timestamp is None:
         ref_timestamp = time.time()
 
-    hours = CRIMSON_UTC_HOURS if raid_type == "crimson" else CELTAK_UTC_HOURS
+    hours = CRIMSON_UTC_HOURS if raid_type == "crimson" else NIGHTMARE_UTC_HOURS
     dt_ref = datetime.fromtimestamp(ref_timestamp, tz=timezone.utc)
     
     windows = []
@@ -623,7 +623,7 @@ class HighClarityRaidCard(QFrame):
         self.setObjectName("raidCard")
         self.setStyleSheet(f"""
             QFrame#raidCard {{
-                background-color: rgba(20, 24, 34, 0.78);
+                background-color: rgba(18, 22, 32, 0.85);
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 border-left: 3px solid {self.accent_color};
                 border-radius: 5px;
@@ -631,17 +631,17 @@ class HighClarityRaidCard(QFrame):
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setContentsMargins(8, 4, 8, 4)
         layout.setSpacing(2)
 
-        # Line 1: Icon + Title + High-Contrast Badge
+        # Line 1: Icon + Title + Non-Overlapping Fixed Badge
         top_line = QHBoxLayout()
-        top_line.setSpacing(5)
+        top_line.setSpacing(6)
 
         if self.icon_pixmap_path and os.path.exists(self.icon_pixmap_path):
             icon_lbl = QLabel()
             pix = QPixmap(self.icon_pixmap_path).scaled(
-                17, 17, 
+                16, 16, 
                 Qt.AspectRatioMode.KeepAspectRatio, 
                 Qt.TransformationMode.SmoothTransformation
             )
@@ -659,35 +659,40 @@ class HighClarityRaidCard(QFrame):
 
         top_line.addStretch()
 
-        # High-Contrast Status Badge
+        # Fixed-width Status Badge: prevents any text overlap or shifting
         self.status_badge = QLabel("UPCOMING")
-        self.status_badge.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        self.status_badge.setFixedWidth(80)
+        self.status_badge.setFixedHeight(18)
+        self.status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_badge.setFont(QFont("Segoe UI", 7, QFont.Weight.Bold))
         self.status_badge.setStyleSheet(
-            "background-color: #1E293B; color: #FFFFFF; "
-            "padding: 1px 6px; border-radius: 3px; border: 1px solid #475569;"
+            "background-color: #1E293B; color: #94A3B8; "
+            "border: 1px solid #334155; border-radius: 3px;"
         )
         top_line.addWidget(self.status_badge)
         layout.addLayout(top_line)
 
-        # Line 2: Action Prefix + Large Countdown + Local Time
+        # Line 2: Fixed Action Prefix + Large Countdown + Local Time
         bottom_line = QHBoxLayout()
         bottom_line.setSpacing(6)
 
         self.action_lbl = QLabel("STARTS IN:")
-        self.action_lbl.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        self.action_lbl.setStyleSheet("color: #E2E8F0; border: none;")
+        self.action_lbl.setFixedWidth(62)
+        self.action_lbl.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        self.action_lbl.setStyleSheet("color: #94A3B8; border: none;")
         bottom_line.addWidget(self.action_lbl)
 
         self.countdown_lbl = QLabel("00:00:00")
         self.countdown_lbl.setFont(QFont("Consolas", 12, QFont.Weight.Bold))
-        self.countdown_lbl.setStyleSheet("color: #FFFFFF; border: none;")
+        self.countdown_lbl.setStyleSheet(f"color: {self.accent_color}; border: none;")
         bottom_line.addWidget(self.countdown_lbl)
 
         bottom_line.addStretch()
 
         self.local_time_lbl = QLabel("Starts --:--")
         self.local_time_lbl.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
-        self.local_time_lbl.setStyleSheet("color: #94A3B8; border: none;")
+        self.local_time_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.local_time_lbl.setStyleSheet("color: #64748B; border: none;")
         bottom_line.addWidget(self.local_time_lbl)
         layout.addLayout(bottom_line)
 
@@ -696,40 +701,39 @@ class HighClarityRaidCard(QFrame):
         seconds_left = status["seconds_left"]
 
         if is_active:
-            # ACTIVE / IN PROGRESS STATE
-            self.status_badge.setText("● ACTIVE NOW")
+            # ACTIVE NOW STATE
+            self.status_badge.setText("● ACTIVE")
             self.status_badge.setStyleSheet(
-                "background-color: rgba(0, 230, 118, 0.25); color: #00FF88; "
-                "font-weight: 900; padding: 1px 6px; border-radius: 3px; "
-                "border: 1.5px solid #00FF88;"
+                "background-color: rgba(6, 78, 59, 0.9); color: #00FF88; "
+                "border: 1.5px solid #00FF88; border-radius: 3px;"
             )
             self.action_lbl.setText("ENDS IN:")
-            self.action_lbl.setStyleSheet("color: #00FF88; font-weight: 900; border: none;")
+            self.action_lbl.setStyleSheet("color: #00FF88; font-weight: bold; border: none;")
 
             self.countdown_lbl.setText(format_countdown(seconds_left))
-            self.countdown_lbl.setStyleSheet("color: #00FF88; font-weight: 900; border: none;")
+            self.countdown_lbl.setStyleSheet("color: #00FF88; font-weight: bold; border: none;")
 
             w = status["active_window"]
-            self.local_time_lbl.setText(f"Ends at {format_local_time(w[1])}")
-            self.local_time_lbl.setStyleSheet("color: #00FF88; font-size: 8px; font-weight: bold; border: none;")
+            if w:
+                self.local_time_lbl.setText(f"Ends {format_local_time(w[1])}")
+                self.local_time_lbl.setStyleSheet("color: #00FF88; font-size: 8px; font-weight: bold; border: none;")
         else:
             # UPCOMING STATE
             self.status_badge.setText("UPCOMING")
             self.status_badge.setStyleSheet(
-                "background-color: #1E293B; color: #FFFFFF; "
-                "font-weight: 800; padding: 1px 6px; border-radius: 3px; "
-                "border: 1px solid #475569;"
+                "background-color: #1E293B; color: #94A3B8; "
+                "border: 1px solid #334155; border-radius: 3px;"
             )
             self.action_lbl.setText("STARTS IN:")
-            self.action_lbl.setStyleSheet("color: #E2E8F0; font-weight: 800; border: none;")
+            self.action_lbl.setStyleSheet("color: #94A3B8; font-weight: bold; border: none;")
 
             self.countdown_lbl.setText(format_countdown(seconds_left))
-            self.countdown_lbl.setStyleSheet(f"color: {self.accent_color}; font-weight: 900; border: none;")
+            self.countdown_lbl.setStyleSheet(f"color: {self.accent_color}; font-weight: bold; border: none;")
 
             w = status["upcoming_window"]
             if w:
                 self.local_time_lbl.setText(f"Starts {format_local_time(w[0])}")
-                self.local_time_lbl.setStyleSheet("color: #94A3B8; font-size: 8px; font-weight: bold; border: none;")
+                self.local_time_lbl.setStyleSheet("color: #64748B; font-size: 8px; font-weight: bold; border: none;")
 
 
 # ---------------------------------------------------------
@@ -764,7 +768,7 @@ class RaidTimerOverlay(QWidget):
             Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setFixedSize(325, 135)
+        self.setFixedSize(350, 142)
 
         # Window Icon
         icon_path = os.path.join(APP_DIR, "app_icon.ico")
@@ -781,7 +785,7 @@ class RaidTimerOverlay(QWidget):
 
         # Main Card Frame
         self.container = QFrame(self)
-        self.container.setGeometry(0, 0, 325, 135)
+        self.container.setGeometry(0, 0, 350, 142)
         self.container.setObjectName("mainFrame")
         self._apply_frame_style(False)
 
@@ -842,15 +846,15 @@ class RaidTimerOverlay(QWidget):
         )
         main_layout.addWidget(self.crimson_card)
 
-        # 3. Celtak Raid Card (with Thunder Crest Icon)
-        self.celtak_card = HighClarityRaidCard(
-            raid_type="celtak",
-            title="Celtak Raid",
-            accent_color="#FFB703",
-            icon_symbol="⚡",
+        # 3. Brutal Nightmare Card (with Nightmare Crest Icon)
+        self.nightmare_card = HighClarityRaidCard(
+            raid_type="nightmare",
+            title="Brutal Nightmare",
+            accent_color="#A855F7",
+            icon_symbol="💀",
             parent=self.container
         )
-        main_layout.addWidget(self.celtak_card)
+        main_layout.addWidget(self.nightmare_card)
 
         # 4. Footer Row (Dynamic Lock Mode + Sound Alert Badge + Prominent Creator Credit)
         footer = QHBoxLayout()
@@ -1001,13 +1005,13 @@ class RaidTimerOverlay(QWidget):
     def update_all_raids(self):
         now = time.time()
         crimson_status = get_raid_status("crimson", now)
-        celtak_status = get_raid_status("celtak", now)
+        nightmare_status = get_raid_status("nightmare", now)
 
         self.crimson_card.update_status(crimson_status)
-        self.celtak_card.update_status(celtak_status)
+        self.nightmare_card.update_status(nightmare_status)
 
         self.check_audio_alert("crimson", crimson_status, now)
-        self.check_audio_alert("celtak", celtak_status, now)
+        self.check_audio_alert("nightmare", nightmare_status, now)
 
         if len(self.triggered_alerts) > 20:
             self.triggered_alerts = {k for k in self.triggered_alerts if now - k[1] < 86400}
