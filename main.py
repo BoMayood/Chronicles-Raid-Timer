@@ -200,27 +200,52 @@ class SoundManager:
 # ---------------------------------------------------------
 # 4. RAID SCHEDULE ENGINE (UTC -> LOCAL CONVERSION & REPEAT)
 # ---------------------------------------------------------
+# Normal difficulty starts first at scheduled UTC hours.
+# Hard difficulty opens immediately after Normal difficulty ends.
+# Crimson Rift: Normal 30m, Hard 30m (Total window: 1h)
+# Brutal Nightmare: Normal 1h, Hard 1h (Total window: 2h)
 CRIMSON_UTC_HOURS = [3, 11, 19]
 NIGHTMARE_UTC_HOURS = [4, 12, 20]
-RAID_DURATION_SECONDS = 1800  # 30 minutes each (UTC)
 
 def get_raid_windows(raid_type, ref_timestamp=None):
     if ref_timestamp is None:
         ref_timestamp = time.time()
 
-    hours = CRIMSON_UTC_HOURS if raid_type == "crimson" else NIGHTMARE_UTC_HOURS
     dt_ref = datetime.fromtimestamp(ref_timestamp, tz=timezone.utc)
-    
     windows = []
+
+    if raid_type == "crimson":
+        hours = CRIMSON_UTC_HOURS
+        norm_dur = 1800  # 30 minutes
+        hard_dur = 1800  # 30 minutes
+    else:  # nightmare
+        hours = NIGHTMARE_UTC_HOURS
+        norm_dur = 3600  # 1 hour (60 minutes)
+        hard_dur = 3600  # 1 hour (60 minutes)
+
     for day_offset in [-1, 0, 1, 2]:
         base_day = (dt_ref + timedelta(days=day_offset)).replace(minute=0, second=0, microsecond=0)
         for h in hours:
-            start_dt = base_day.replace(hour=h)
-            start_ts = start_dt.timestamp()
-            end_ts = start_ts + RAID_DURATION_SECONDS
-            windows.append((start_ts, end_ts))
+            # 1. Normal Difficulty Window
+            norm_start_dt = base_day.replace(hour=h)
+            norm_start_ts = norm_start_dt.timestamp()
+            norm_end_ts = norm_start_ts + norm_dur
+            windows.append({
+                "difficulty": "Normal",
+                "start_ts": norm_start_ts,
+                "end_ts": norm_end_ts
+            })
 
-    windows.sort(key=lambda w: w[0])
+            # 2. Hard Difficulty Window (Opens immediately after Normal ends)
+            hard_start_ts = norm_end_ts
+            hard_end_ts = hard_start_ts + hard_dur
+            windows.append({
+                "difficulty": "Hard",
+                "start_ts": hard_start_ts,
+                "end_ts": hard_end_ts
+            })
+
+    windows.sort(key=lambda w: w["start_ts"])
     return windows
 
 def get_raid_status(raid_type, current_time=None):
@@ -231,28 +256,35 @@ def get_raid_status(raid_type, current_time=None):
     active_window = None
     upcoming_windows = []
 
-    for start_ts, end_ts in windows:
-        if start_ts <= current_time < end_ts:
-            active_window = (start_ts, end_ts)
-        elif start_ts > current_time:
-            upcoming_windows.append((start_ts, end_ts))
+    for w in windows:
+        if w["start_ts"] <= current_time < w["end_ts"]:
+            active_window = w
+        elif w["start_ts"] > current_time:
+            upcoming_windows.append(w)
 
     if active_window:
-        seconds_left = max(0, int(active_window[1] - current_time))
+        seconds_left = max(0, int(active_window["end_ts"] - current_time))
+        next_win = upcoming_windows[0] if upcoming_windows else None
         return {
             "is_active": True,
+            "difficulty": active_window["difficulty"],
             "seconds_left": seconds_left,
             "active_window": active_window,
-            "upcoming_window": upcoming_windows[0] if upcoming_windows else None
+            "next_window": next_win,
+            "upcoming_window": next_win
         }
     else:
         next_win = upcoming_windows[0] if upcoming_windows else None
-        seconds_left = max(0, int(next_win[0] - current_time)) if next_win else 0
+        following_win = upcoming_windows[1] if len(upcoming_windows) > 1 else None
+        seconds_left = max(0, int(next_win["start_ts"] - current_time)) if next_win else 0
         return {
             "is_active": False,
+            "difficulty": next_win["difficulty"] if next_win else "Normal",
             "seconds_left": seconds_left,
             "active_window": None,
-            "upcoming_window": next_win
+            "next_window": next_win,
+            "upcoming_window": next_win,
+            "following_window": following_win
         }
 
 def format_countdown(seconds):
@@ -659,15 +691,15 @@ class HighClarityRaidCard(QFrame):
 
         top_line.addStretch()
 
-        # Fixed-width Status Badge: prevents any text overlap or shifting
-        self.status_badge = QLabel("UPCOMING")
-        self.status_badge.setFixedWidth(80)
+        # Fixed-width Status Badge: clearly indicates difficulty & active state
+        self.status_badge = QLabel("NORMAL")
+        self.status_badge.setFixedWidth(82)
         self.status_badge.setFixedHeight(18)
         self.status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_badge.setFont(QFont("Segoe UI", 7, QFont.Weight.Bold))
         self.status_badge.setStyleSheet(
-            "background-color: #1E293B; color: #94A3B8; "
-            "border: 1px solid #334155; border-radius: 3px;"
+            "background-color: #0F2942; color: #38BDF8; "
+            "border: 1px solid #0284C7; border-radius: 3px;"
         )
         top_line.addWidget(self.status_badge)
         layout.addLayout(top_line)
@@ -689,7 +721,7 @@ class HighClarityRaidCard(QFrame):
 
         bottom_line.addStretch()
 
-        self.local_time_lbl = QLabel("Starts --:--")
+        self.local_time_lbl = QLabel("Norm --:-- • Hard --:--")
         self.local_time_lbl.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
         self.local_time_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.local_time_lbl.setStyleSheet("color: #64748B; border: none;")
@@ -699,41 +731,75 @@ class HighClarityRaidCard(QFrame):
     def update_status(self, status):
         is_active = status["is_active"]
         seconds_left = status["seconds_left"]
+        difficulty = status.get("difficulty", "Normal")
 
         if is_active:
-            # ACTIVE NOW STATE
-            self.status_badge.setText("● ACTIVE")
-            self.status_badge.setStyleSheet(
-                "background-color: rgba(6, 78, 59, 0.9); color: #00FF88; "
-                "border: 1.5px solid #00FF88; border-radius: 3px;"
-            )
-            self.action_lbl.setText("ENDS IN:")
-            self.action_lbl.setStyleSheet("color: #00FF88; font-weight: bold; border: none;")
+            if difficulty == "Normal":
+                # NORMAL ACTIVE (Glowing Green)
+                self.status_badge.setText("● NORMAL")
+                self.status_badge.setStyleSheet(
+                    "background-color: rgba(6, 78, 59, 0.95); color: #00FF88; "
+                    "border: 1.5px solid #00FF88; border-radius: 3px; font-weight: bold;"
+                )
+                self.action_lbl.setText("ENDS IN:")
+                self.action_lbl.setStyleSheet("color: #00FF88; font-weight: bold; border: none;")
+                self.countdown_lbl.setText(format_countdown(seconds_left))
+                self.countdown_lbl.setStyleSheet("color: #00FF88; font-weight: bold; border: none;")
 
-            self.countdown_lbl.setText(format_countdown(seconds_left))
-            self.countdown_lbl.setStyleSheet("color: #00FF88; font-weight: bold; border: none;")
-
-            w = status["active_window"]
-            if w:
-                self.local_time_lbl.setText(f"Ends {format_local_time(w[1])}")
+                w = status.get("active_window")
+                next_w = status.get("next_window")
+                if next_w:
+                    self.local_time_lbl.setText(f"Hard starts {format_local_time(next_w['start_ts'])}")
+                elif w:
+                    self.local_time_lbl.setText(f"Ends {format_local_time(w['end_ts'])}")
                 self.local_time_lbl.setStyleSheet("color: #00FF88; font-size: 8px; font-weight: bold; border: none;")
+            else:
+                # HARD ACTIVE (Glowing Flame Red)
+                self.status_badge.setText("● HARD")
+                self.status_badge.setStyleSheet(
+                    "background-color: rgba(127, 29, 29, 0.95); color: #FF4D4D; "
+                    "border: 1.5px solid #FF4D4D; border-radius: 3px; font-weight: bold;"
+                )
+                self.action_lbl.setText("ENDS IN:")
+                self.action_lbl.setStyleSheet("color: #FF4D4D; font-weight: bold; border: none;")
+                self.countdown_lbl.setText(format_countdown(seconds_left))
+                self.countdown_lbl.setStyleSheet("color: #FF4D4D; font-weight: bold; border: none;")
+
+                w = status.get("active_window")
+                if w:
+                    self.local_time_lbl.setText(f"Ends {format_local_time(w['end_ts'])}")
+                self.local_time_lbl.setStyleSheet("color: #FF4D4D; font-size: 8px; font-weight: bold; border: none;")
         else:
-            # UPCOMING STATE
-            self.status_badge.setText("UPCOMING")
-            self.status_badge.setStyleSheet(
-                "background-color: #1E293B; color: #94A3B8; "
-                "border: 1px solid #334155; border-radius: 3px;"
-            )
+            # UPCOMING STATE - Explicit Difficulty Badge
+            if difficulty == "Normal":
+                self.status_badge.setText("NORMAL")
+                self.status_badge.setStyleSheet(
+                    "background-color: #0F2942; color: #38BDF8; "
+                    "border: 1px solid #0284C7; border-radius: 3px; font-weight: bold;"
+                )
+            else:
+                self.status_badge.setText("HARD")
+                self.status_badge.setStyleSheet(
+                    "background-color: #3B1219; color: #FB7185; "
+                    "border: 1px solid #E11D48; border-radius: 3px; font-weight: bold;"
+                )
+
             self.action_lbl.setText("STARTS IN:")
             self.action_lbl.setStyleSheet("color: #94A3B8; font-weight: bold; border: none;")
-
             self.countdown_lbl.setText(format_countdown(seconds_left))
             self.countdown_lbl.setStyleSheet(f"color: {self.accent_color}; font-weight: bold; border: none;")
 
-            w = status["upcoming_window"]
-            if w:
-                self.local_time_lbl.setText(f"Starts {format_local_time(w[0])}")
-                self.local_time_lbl.setStyleSheet("color: #64748B; font-size: 8px; font-weight: bold; border: none;")
+            # Display both Normal and Hard start times clearly
+            next_w = status.get("upcoming_window")
+            following_w = status.get("following_window")
+            if next_w and following_w:
+                t_norm = format_local_time(next_w["start_ts"])
+                t_hard = format_local_time(following_w["start_ts"])
+                self.local_time_lbl.setText(f"Norm {t_norm} • Hard {t_hard}")
+            elif next_w:
+                t_next = format_local_time(next_w["start_ts"])
+                self.local_time_lbl.setText(f"Starts {t_next}")
+            self.local_time_lbl.setStyleSheet("color: #94A3B8; font-size: 8px; font-weight: bold; border: none;")
 
 
 # ---------------------------------------------------------
@@ -768,7 +834,7 @@ class RaidTimerOverlay(QWidget):
             Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setFixedSize(350, 142)
+        self.setFixedSize(360, 142)
 
         # Window Icon
         icon_path = os.path.join(APP_DIR, "app_icon.ico")
@@ -785,7 +851,7 @@ class RaidTimerOverlay(QWidget):
 
         # Main Card Frame
         self.container = QFrame(self)
-        self.container.setGeometry(0, 0, 350, 142)
+        self.container.setGeometry(0, 0, 360, 142)
         self.container.setObjectName("mainFrame")
         self._apply_frame_style(False)
 
@@ -994,7 +1060,7 @@ class RaidTimerOverlay(QWidget):
 
         up_win = status.get("upcoming_window")
         if up_win:
-            start_ts = up_win[0]
+            start_ts = up_win["start_ts"]
             sec_left = int(start_ts - now)
             if 0 <= sec_left <= alert_offset_sec and (alert_offset_sec - sec_left) <= 1:
                 key = (raid_name, start_ts, alert_offset_sec)
