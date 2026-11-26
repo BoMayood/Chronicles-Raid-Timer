@@ -6,12 +6,12 @@
 
 **A sleek, glassmorphic Windows desktop HUD overlay and Raid Command Center engineered for real-time tracking of world events, multi-phase raids, and custom boss respawn timers.**
 
-[![Version](https://img.shields.io/badge/Version-0.6-F5C451?style=for-the-badge)](version.py)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078D6?style=for-the-badge&logo=windows)](app.py)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](requirements.txt)
-[![UI](https://img.shields.io/badge/UI-PyQt6%20Glassmorphic-41CD52?style=for-the-badge&logo=qt&logoColor=white)](chronicles/ui/hud_overlay.py)
-[![Discord](https://img.shields.io/badge/Discord-Updates%20%26%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/Vthdw8FYt6)
-[![License](https://img.shields.io/badge/License-MIT-22D3EE?style=for-the-badge)](#license)
+<a href="version.py"><img src="docs/badges/version.svg" alt="Version 0.6" height="28" /></a>
+<a href="app.py"><img src="docs/badges/platform.svg" alt="Platform Windows 10 / 11" height="28" /></a>
+<a href="requirements.txt"><img src="docs/badges/python.svg" alt="Python 3.10+" height="28" /></a>
+<a href="chronicles/ui/hud_overlay.py"><img src="docs/badges/ui.svg" alt="UI PyQt6 Glassmorphic" height="28" /></a>
+<a href="https://discord.gg/Vthdw8FYt6"><img src="docs/badges/discord.svg" alt="Discord Updates and Community" height="28" /></a>
+<a href="#license"><img src="docs/badges/license.svg" alt="License MIT" height="28" /></a>
 
 <br />
 
@@ -264,6 +264,7 @@ Chronicles_Raid_Timer/
 │   ├── icons/                          # Realistic 3D shield app_icon.png & multi-size app_icon.ico
 │   └── sounds/                         # 5 curated HD .wav alert cues
 ├── docs/
+│   ├── badges/                         # Self-hosted GitHub SVG badges (zero external CDN issues)
 │   └── screenshots/                    # Showcase screenshots for GitHub README
 ├── packaging/
 │   ├── app.manifest                    # Standard Windows asInvoker & Common Controls v6 manifest
