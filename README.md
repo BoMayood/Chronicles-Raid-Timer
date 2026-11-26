@@ -236,52 +236,6 @@ Running `.\packaging\build_release.ps1` outputs:
 
 ---
 
-## Project Structure
-
-```text
-Chronicles_Raid_Timer/
-├── app.py                              # Application controller, mutex guard, tray, alerts & --uninstall
-├── version.py                          # Version metadata (APP_VERSION = "0.6")
-├── requirements.txt                    # PyQt6, Pillow, numpy
-├── chronicles/
-│   ├── models.py                       # Raid definitions, windows, live statuses & templates
-│   ├── schedule_engine.py              # UTC/Local/Weekly/Manual respawn & 24h timeline engine
-│   ├── config.py                       # Atomic JSON config persistence, validation & portable mode
-│   ├── themes.py                       # 6 glassmorphic color palettes
-│   ├── audio_engine.py                 # 44.1 kHz WAV synthesizer, sound player & multi-voice TTS
-│   ├── hotkey_manager.py               # Hook-free multi-action GetAsyncKeyState monitor
-│   ├── win32_utils.py                  # DPI, click-through, COM shortcuts, registry & process control
-│   └── ui/
-│       ├── svg_icons.py                # 3D crest loader, SVG emblems & dynamic tinting
-│       ├── widgets.py                  # ProgressRing, SvgIconButton, ColorSwatchButton, KeyCaptureButton
-│       ├── raid_card.py                # TacticalRaidCard (Cards, Compact, Horizontal & adaptive narrow UI)
-│       ├── hud_overlay.py              # Main glassmorphic floating HUD window
-│       ├── timeline_widget.py          # Interactive 24-hour raid swimlane timeline canvas
-│       ├── toast_banner.py             # Focus-safe animated corner notification banner
-│       ├── command_center.py           # 5-tab Command Center & Custom Raid Editor modal
-│       └── uninstaller_wizard.py       # Multi-step Uninstaller Wizard & silent uninstall helper
-├── assets/
-│   ├── icons/                          # Realistic 3D shield app_icon.png & multi-size app_icon.ico
-│   └── sounds/                         # 5 curated HD .wav alert cues
-├── docs/
-│   ├── badges/                         # Self-hosted GitHub SVG badges (zero external CDN issues)
-│   └── screenshots/                    # Showcase screenshots for GitHub README
-├── packaging/
-│   ├── app.manifest                    # Standard Windows asInvoker & Common Controls v6 manifest
-│   ├── installer_wizard.py             # 4-step Chronicles Setup Wizard
-│   ├── generate_assets.py              # Sound & icon verifier/generator
-│   ├── capture_screenshots.py          # Automated UI screenshot generator
-│   ├── ChroniclesRaidTimer.spec        # Portable single-file EXE spec (upx=False)
-│   ├── ChroniclesAppPayload.spec       # Fast-launch onedir payload spec (upx=False)
-│   ├── ChroniclesSetup.spec            # Standalone Setup Installer spec (upx=False)
-│   ├── version_info.txt                # App PE version resource (0.6.0.0)
-│   ├── version_info_setup.txt          # Setup PE version resource (0.6.0.0)
-│   └── build_release.ps1               # End-to-end test, portable & installer build pipeline
-└── tests/
-    ├── test_schedule_engine.py         # Schedule & phase transition tests
-    ├── test_config.py                  # Config persistence, TTS & hotkey parsing tests
-    └── test_ui_smoke.py                # Offscreen PyQt6 rendering, overlap & wizard smoke tests
-```
 
 ---
 
@@ -293,21 +247,6 @@ All future updates, patch notes, new features, and announcements are posted on t
 
 ---
 
-## Changelog
-
-### `v0.6` — Installer Hardening, Responsive HUD & Curated Audio
-- Bumped release to **`v0.6`** across application telemetry, HUD/Command Center chrome, PE version metadata, and installer/uninstaller wizards.
-- Re-engineered HUD chrome & card layout sizing with pixel-budget measurement and adaptive compact badges so windows shrink cleanly down to `~220 px` with zero label overlap.
-- Curated **5 HD alert audio cues** featuring **Chronicles War Horn (Default)** and a **3-persona** Windows TTS announcer (`Commander David`, `Oracle Zira`, `Dispatch Mark`).
-- Upgraded the emblem to a 3D heraldic crimson-and-gold shield icon (`app_icon.png` / `.ico`).
-- Added a 4-step **Setup Wizard** (`Chronicles_Raid_Timer_Setup_v0.6.exe`) and 3-step/silent **Uninstaller Wizard** with `upx=False`, `asInvoker` manifest, `--onedir` payload, and pure Win32 COM shortcuts.
-
-### `v0.1.0` — Initial Release
-- Ground-up modular architecture for **Chronicles Raid Timer**.
-- Glassmorphic floating HUD overlay with radial progress rings, 3 view modes (`Cards`, `Compact`, `Horizontal`), Ghost Pass-Through Lock, and magnetic edge snapping.
-- 5-tab **Chronicles Command Center** with a 24-hour interactive timeline, custom Daily/Weekly/Manual respawn builder, multi-stage warning milestones, multi-voice Windows TTS announcer, focus-safe toast banners, 6 themes, and 5 curated HD audio cues.
-
----
 
 ## License
 
